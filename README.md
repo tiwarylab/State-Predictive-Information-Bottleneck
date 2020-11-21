@@ -26,10 +26,10 @@ python test_model.py	-dt	# Time delay delta t in terms of # of minimal time reso
 						-biased	# Path to the weights of the samples if bised MD is used
 						-seed	# Random seed
 ```
-### Examples
+### Example
 
-Train and test SPIB on the four-well analytical potential using the data in the path :
+Train and test SPIB on the four-well analytical potential:
 ```
-python test_model.py -dt 50 -d 2 -K 10 -epochs 3 -m 2000 -lr 0.001 -b 0.01 -label examples/FW/Four_Well_beta3_gamma4_init_label10.npy -traj examples/FW/Four_Well_beta3_gamma4.npy
+python test_model.py -dt 50 -d 1 -K 10 -epochs 10 -bs 512 -m 1000 -lr 0.001 -b 0.01 -seed 0 -label examples/Four_Well_beta3_gamma4_init_label10.npy -traj examples/Four_Well_beta3_gamma4_traj_data.npy
 ```
 
