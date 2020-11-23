@@ -1,3 +1,10 @@
+"""
+SPIB: A deep learning-based framework to learn RCs 
+from MD trajectories. Code maintained by Dedi.
+
+Read and cite the following when using this method:
+https://arxiv.org/abs/2011.10127
+"""
 import torch
 from torch import nn
 import numpy as np
@@ -40,9 +47,6 @@ class SPIB(nn.Module):
             nn.Softmax(dim=0))
         
         self.pseudo_means = nn.Linear(self.pseudo_dim, np.prod(self.data_shape), bias=False)
-        
-        # use_training_data_init
-        # self.pseudo_means.weight.data = torch.from_numpy(np.array([[0, 0.7], [0, -0.7]])).float()
         
         self.encoder = self._encoder_init()
         
