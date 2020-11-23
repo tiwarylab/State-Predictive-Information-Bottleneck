@@ -1,3 +1,10 @@
+"""
+SPIB: A deep learning-based framework to learn RCs 
+from MD trajectories. Code maintained by Dedi.
+
+Read and cite the following when using this method:
+https://arxiv.org/abs/2011.10127
+"""
 import torch
 import numpy as np
 import time
