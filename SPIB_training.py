@@ -13,7 +13,7 @@ import os
 # Data Processing
 # ------------------------------------------------------------------------------
 
-def data_init(t0, dt, traj_data, traj_label, traj_bias):
+def data_init(t0, dt, traj_data, traj_label, traj_weights):
     assert len(traj_data)==len(traj_label)
     
     # skip the first t0 data
@@ -41,23 +41,23 @@ def data_init(t0, dt, traj_data, traj_label, traj_bias):
     label_train = label[0: (9 * n_data) // 10]
     label_test = label[(9 * n_data) // 10:]
     
-    if traj_bias != None:
-        assert len(traj_data)==len(traj_bias)
-        bias = traj_bias[t0:(len(traj_data)-dt)]
-        bias = bias[p]
-        bias_train = bias[0: (9 * n_data) // 10]
-        bias_test = bias[(9 * n_data) // 10:]
+    if traj_weights != None:
+        assert len(traj_data)==len(traj_weights)
+        weights = traj_weights[t0:(len(traj_data)-dt)]
+        weights = weights[p]
+        weights_train = weights[0: (9 * n_data) // 10]
+        weights_test = weights[(9 * n_data) // 10:]
     else:
-        bias_train = None
-        bias_test = None
+        weights_train = None
+        weights_test = None
     
-    return data_shape, past_data_train, future_data_train, label_train, bias_train,\
-        past_data_test, future_data_test, label_test, bias_test
+    return data_shape, past_data_train, future_data_train, label_train, weights_train,\
+        past_data_test, future_data_test, label_test, weights_test
 
 # Loss function
 # ------------------------------------------------------------------------------
 
-def calculate_loss(IB, data_inputs, data_targets, data_bias, beta=1.0):
+def calculate_loss(IB, data_inputs, data_targets, data_weights, beta=1.0):
     
     # pass through VAE
     outputs, z_sample, z_mean, z_logvar = IB.forward(data_inputs)
@@ -67,20 +67,20 @@ def calculate_loss(IB, data_inputs, data_targets, data_bias, beta=1.0):
     log_q = -0.5 * torch.sum(z_logvar + torch.pow(z_sample-z_mean, 2)
                              /torch.exp(z_logvar), dim=1)
     
-    if data_bias == None:
+    if data_weights == None:
         # Reconstruction loss is cross-entropy
-        reconstruction_error = torch.mean(torch.sum(-data_targets*torch.log(outputs), dim=1))
+        reconstruction_error = torch.mean(torch.sum(-data_targets*outputs, dim=1))
         
         # KL Divergence
         kl_loss = torch.mean(log_q-log_p)
         
     else:
         # Reconstruction loss is cross-entropy
-        # reweighed by bias
-        reconstruction_error = torch.mean(data_bias*torch.sum(-data_targets*torch.log(outputs), dim=1))
+        # reweighed
+        reconstruction_error = torch.mean(data_weights*torch.sum(-data_targets*outputs, dim=1))
         
         # KL Divergence
-        kl_loss = torch.mean(data_bias*(log_q-log_p))
+        kl_loss = torch.mean(data_weights*(log_q-log_p))
         
     
     loss = reconstruction_error + beta*kl_loss
@@ -91,22 +91,22 @@ def calculate_loss(IB, data_inputs, data_targets, data_bias, beta=1.0):
 # Train and test model
 # ------------------------------------------------------------------------------
 
-def sample_minibatch(past_data, data_labels, data_bias, indices, device):
+def sample_minibatch(past_data, data_labels, data_weights, indices, device):
     sample_past_data = past_data[indices].to(device)
     sample_data_labels = data_labels[indices].to(device)
     
-    if data_bias == None:
-        sample_data_bias = None
+    if data_weights == None:
+        sample_data_weights = None
     else:
-        sample_data_bias = data_bias[indices].to(device)
+        sample_data_weights = data_weights[indices].to(device)
     
     
-    return sample_past_data, sample_data_labels, sample_data_bias
+    return sample_past_data, sample_data_labels, sample_data_weights
 
 
-def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, train_data_bias, \
-          test_past_data, test_future_data, init_test_data_labels, test_data_bias, \
-              optimizer, n_epoch, refinement_interval, batch_size, output_path, log_interval, device, index):
+def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, train_data_weights, \
+          test_past_data, test_future_data, init_test_data_labels, test_data_weights, \
+              optimizer, n_epoch, refinement_interval, batch_size, min_refinements, output_path, log_interval, device, index):
     IB.train()
     
     step = 0
@@ -119,7 +119,11 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
     train_data_labels = init_train_data_labels
     test_data_labels = init_test_data_labels
 
-    for epoch in range(n_epoch):
+    updata_times = 0
+    epoch = 0
+
+    # Stop only if epoch >= n_epoch and updata_times >= min_refinements
+    while epoch < n_epoch or updata_times < min_refinements:
         
         train_permutation = torch.randperm(len(train_past_data))
         test_permutation = torch.randperm(len(test_past_data))
@@ -133,11 +137,11 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
             
             train_indices = train_permutation[i:i+batch_size]
             
-            batch_inputs, batch_outputs, batch_bias = sample_minibatch(train_past_data, train_data_labels, \
-                                                                       train_data_bias, train_indices, device)
+            batch_inputs, batch_outputs, batch_weights = sample_minibatch(train_past_data, train_data_labels, \
+                                                                       train_data_weights, train_indices, device)
                     
             loss, reconstruction_error, kl_loss= calculate_loss(IB, batch_inputs, \
-                                                                batch_outputs, batch_bias, beta)
+                                                                batch_outputs, batch_weights, beta)
             
             # Stop if NaN is obtained
             if(torch.isnan(loss).any()):
@@ -150,11 +154,11 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
             if step % 500 == 0:
                 with torch.no_grad():
                     
-                    batch_inputs, batch_outputs, batch_bias = sample_minibatch(train_past_data, train_data_labels, \
-                                                                               train_data_bias, train_indices, device)
+                    batch_inputs, batch_outputs, batch_weights = sample_minibatch(train_past_data, train_data_labels, \
+                                                                               train_data_weights, train_indices, device)
                             
                     loss, reconstruction_error, kl_loss= calculate_loss(IB, batch_inputs, \
-                                                                        batch_outputs, batch_bias, beta)
+                                                                        batch_outputs, batch_weights, beta)
                     train_time = time.time() - start
             
                     print(
@@ -171,11 +175,11 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
                     
                     test_indices = test_permutation[j:j+batch_size]
                     
-                    batch_inputs, batch_outputs, batch_bias = sample_minibatch(test_past_data, test_data_labels, \
-                                                                               test_data_bias, test_indices, device)
+                    batch_inputs, batch_outputs, batch_weights = sample_minibatch(test_past_data, test_data_labels, \
+                                                                               test_data_weights, test_indices, device)
                     
                     loss, reconstruction_error, kl_loss = calculate_loss(IB, batch_inputs, \
-                                                                         batch_outputs, batch_bias, beta)
+                                                                         batch_outputs, batch_weights, beta)
 
                     train_time = time.time() - start
                     print(
@@ -191,6 +195,9 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
             if IB.UpdateLabel and step % refinement_interval == 0:
                 train_data_labels = IB.update_labels(train_future_data, batch_size)
                 test_data_labels = IB.update_labels(test_future_data, batch_size)
+
+                updata_times+=1
+                print("Update %d\n"%updata_times)
         
             if step % log_interval == 0:
                 # save model
@@ -199,6 +206,8 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
                            IB_path+ '_%d_cpt.pt'%step)
                 torch.save({'optimizer': optimizer.state_dict()},
                            IB_path+ '_%d_optim_cpt.pt'%step) 
+
+        epoch+=1
         
                 
     # output the saving path
@@ -215,8 +224,8 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
     return False
 
 @torch.no_grad()
-def output_final_result(IB, device, train_past_data, train_future_data, train_data_labels, train_data_bias, \
-                        test_past_data, test_future_data, test_data_labels, test_data_bias, batch_size, output_path, \
+def output_final_result(IB, device, train_past_data, train_future_data, train_data_labels, train_data_weights, \
+                        test_past_data, test_future_data, test_data_labels, test_data_weights, batch_size, output_path, \
                             path, dt, beta, learning_rate, index=0):
     
     with torch.no_grad():
@@ -234,10 +243,10 @@ def output_final_result(IB, device, train_past_data, train_future_data, train_da
         loss, reconstruction_error, kl_loss= [0 for i in range(3)]
         
         for i in range(0, len(train_past_data), batch_size):
-            batch_inputs, batch_outputs, batch_bias = sample_minibatch(train_past_data, train_data_labels, train_data_bias, \
+            batch_inputs, batch_outputs, batch_weights = sample_minibatch(train_past_data, train_data_labels, train_data_weights, \
                                                                        range(i,min(i+batch_size,len(train_past_data))), IB.device)
             loss1, reconstruction_error1, kl_loss1 = calculate_loss(IB, batch_inputs, batch_outputs, \
-                                                                    batch_bias, beta)
+                                                                    batch_weights, beta)
             loss += loss1*len(batch_inputs)
             reconstruction_error += reconstruction_error1*len(batch_inputs)
             kl_loss += kl_loss1*len(batch_inputs)
@@ -262,10 +271,10 @@ def output_final_result(IB, device, train_past_data, train_future_data, train_da
         loss, reconstruction_error, kl_loss = [0 for i in range(3)]
         
         for i in range(0, len(test_past_data), batch_size):
-            batch_inputs, batch_outputs, batch_bias = sample_minibatch(test_past_data, test_data_labels, test_data_bias, \
+            batch_inputs, batch_outputs, batch_weights = sample_minibatch(test_past_data, test_data_labels, test_data_weights, \
                                                                                          range(i,min(i+batch_size,len(test_past_data))), IB.device)
             loss1, reconstruction_error1, kl_loss1 = calculate_loss(IB, batch_inputs, batch_outputs, \
-                                                                   batch_bias, beta)
+                                                                   batch_weights, beta)
             loss += loss1*len(batch_inputs)
             reconstruction_error += reconstruction_error1*len(batch_inputs)
             kl_loss += kl_loss1*len(batch_inputs)

@@ -73,9 +73,15 @@ def test_model():
         batch_size = int(sys.argv[sys.argv.index('-bs') + 1])
     else:
         batch_size = 2048
+
+    # Minimum refinements
+    if '-min_refinements' in sys.argv:
+        min_refinements = int(sys.argv[sys.argv.index('-min_refinements') + 1])
+    else:
+        min_refinements = 0
         
     # By default, we save the model every 10000 steps
-    my_log_interval = 10000 
+    log_interval = 10000 
     
     # learning rate of Adam optimizer
     if '-lr' in sys.argv:
@@ -111,33 +117,38 @@ def test_model():
     traj_data = torch.from_numpy(traj_data).float().to(default_device)
     
     
-    # Path to the weights of the samples if bised MD is used
-    if '-bias' in sys.argv:
-        traj_bias = np.load(sys.argv[sys.argv.index('-bias') + 1])
-        traj_bias = torch.from_numpy(traj_bias).float().to(default_device)
-        BiasReweighed = True
-        IB_path = os.path.join(base_path, "Bias")
+    # Path to the weights of the samples
+    if '-w' in sys.argv:
+        traj_weights = np.load(sys.argv[sys.argv.index('-bias') + 1])
+        traj_weights = torch.from_numpy(traj_weights).float().to(default_device)
+        IB_path = os.path.join(base_path, "Weighted")
     else:
-        traj_bias = None
-        BiasReweighed = False
-        IB_path = os.path.join(base_path, "Unbias")
+        traj_weights = None
+        IB_path = os.path.join(base_path, "Unweighted")
     
     # Random seed
     if '-seed' in sys.argv:
-        index = int(sys.argv[sys.argv.index('-seed') + 1])
-        np.random.seed(index)
-        torch.manual_seed(index)    
+        seed = int(sys.argv[sys.argv.index('-seed') + 1])
+        np.random.seed(seed)
+        torch.manual_seed(seed)    
     else:
-        index = 0
+        seed = 0
     
     
     # Other controls
     
     # Whether to refine the labels during the training process
-    UpdateLabel = True
+    if '-UpdateLabel' in sys.argv:
+        UpdateLabel = bool(sys.argv[sys.argv.index('-UpdateLabel') + 1])  
+    else:
+        UpdateLabel = True
+    
     
     # Whether save trajectory results
-    SaveTrajResults = True
+    if '-SaveTrajResults' in sys.argv:
+        SaveTrajResults = bool(sys.argv[sys.argv.index('-SaveTrajResults') + 1])  
+    else:
+        SaveTrajResults = True
     
     # Train and Test our model
     # ------------------------------------------------------------------------------
@@ -146,14 +157,14 @@ def test_model():
     os.makedirs(os.path.dirname(final_result_path), exist_ok=True)
     print("Final Result", file=open(final_result_path, 'w'))
     
-    data_shape, train_past_data, train_future_data, train_data_labels, train_data_bias, \
-        test_past_data, test_future_data, test_data_labels, test_data_bias = \
-            SPIB_training.data_init(t0, dt, traj_data, traj_labels, traj_bias)
+    data_shape, train_past_data, train_future_data, train_data_labels, train_data_weights, \
+        test_past_data, test_future_data, test_data_labels, test_data_weights = \
+            SPIB_training.data_init(t0, dt, traj_data, traj_labels, traj_weights)
     
-    output_path = IB_path + "_d=%d_K=%d_t=%d_b=%.3f_learn=%f" \
+    output_path = IB_path + "_d=%d_K=%d_t=%d_b=%.4f_learn=%f" \
         % (RC_dim, pseudo_dim, dt, beta, learning_rate)
 
-    IB = SPIB.SPIB(RC_dim, pseudo_dim, output_dim, data_shape, device, BiasReweighed, \
+    IB = SPIB.SPIB(RC_dim, pseudo_dim, output_dim, data_shape, device, \
                    UpdateLabel, neuron_num1, neuron_num2)
     
     IB.to(device)
@@ -163,21 +174,21 @@ def test_model():
     optimizer = torch.optim.Adam(IB.parameters(), lr=learning_rate)
 
     train_result = SPIB_training.train(IB, beta, train_past_data, train_future_data, \
-                                       train_data_labels, train_data_bias, test_past_data, test_future_data, \
-                                           test_data_labels, test_data_bias, optimizer, \
-                                               training_epochs, refinement_interval, batch_size, output_path, \
-                                                   my_log_interval, device, index)
+                                       train_data_labels, train_data_weights, test_past_data, test_future_data, \
+                                           test_data_labels, test_data_weights, optimizer, \
+                                               training_epochs, refinement_interval, batch_size, min_refinements, output_path, \
+                                                   log_interval, device, seed)
     
     if train_result:
         return
     
-    SPIB_training.output_final_result(IB, device, train_past_data, train_future_data, train_data_labels, train_data_bias, \
-                                      test_past_data, test_future_data, test_data_labels, test_data_bias, batch_size, \
-                                          output_path, final_result_path, dt, beta, learning_rate, index)
+    SPIB_training.output_final_result(IB, device, train_past_data, train_future_data, train_data_labels, train_data_weights, \
+                                      test_past_data, test_future_data, test_data_labels, test_data_weights, batch_size, \
+                                          output_path, final_result_path, dt, beta, learning_rate, seed)
 
-    IB.save_traj_results(traj_data, batch_size, output_path, SaveTrajResults, index)
+    IB.save_traj_results(traj_data, batch_size, output_path, SaveTrajResults, 0, seed)
     
-    IB.save_pseudo_parameters(output_path, index)
+    IB.save_pseudo_parameters(output_path, seed)
 
 
 if __name__ == '__main__':

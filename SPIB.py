@@ -17,7 +17,7 @@ import torch.nn.functional as F
 
 class SPIB(nn.Module):
 
-    def __init__(self, z_dim, pseudo_dim, output_dim, data_shape, device, BiasReweighed=False, UpdateLabel= False, neuron_num1=128, 
+    def __init__(self, z_dim, pseudo_dim, output_dim, data_shape, device, UpdateLabel= False, neuron_num1=128, 
                  neuron_num2=128):
         
         super(SPIB, self).__init__()
@@ -31,7 +31,6 @@ class SPIB(nn.Module):
         
         self.data_shape = data_shape
         
-        self.BiasReweighed = BiasReweighed
         self.UpdateLabel = UpdateLabel
         
         self.eps = 1e-10
@@ -79,7 +78,7 @@ class SPIB(nn.Module):
             modules += [nn.ReLU()]
         
         modules += [nn.Linear(self.neuron_num2, self.output_dim)]
-        modules += [nn.Softmax(dim=1)]
+        modules += [nn.LogSoftmax(dim=1)]
         
         return nn.Sequential(*modules)
 
@@ -152,10 +151,11 @@ class SPIB(nn.Module):
                 batch_inputs = inputs[i:i+batch_size].to(self.device)
             
                 # pass through VAE
-                prediction, z_sample, z_mean, z_logvar = self.forward(batch_inputs)
+                z_mean, z_logvar = self.encode(batch_inputs)        
+                log_prediction = self.decoder(z_mean)
                 
                 # label = p/Z
-                labels += [prediction.cpu()]
+                labels += [log_prediction.exp().cpu()]
             
             labels = torch.cat(labels, dim=0)
             max_pos = labels.argmax(1)
@@ -181,7 +181,7 @@ class SPIB(nn.Module):
         np.save(pseudo_z_logvar_path, pseudo_z_logvar.cpu().data.numpy())
         
     @torch.no_grad()
-    def save_traj_results(self, inputs, batch_size, path, SaveTrajResults, index=1):
+    def save_traj_results(self, inputs, batch_size, path, SaveTrajResults, traj_index=0, index=1):
         all_prediction=[] 
         all_z_sample=[] 
         all_z_mean=[] 
@@ -191,9 +191,12 @@ class SPIB(nn.Module):
             batch_inputs = inputs[i:i+batch_size].to(self.device)
         
             # pass through VAE
-            prediction, z_sample, z_mean, z_logvar = self.forward(batch_inputs)
+            z_mean, z_logvar = self.encode(batch_inputs)
+            z_sample = self.reparameterize(z_mean, z_logvar)
+        
+            log_prediction = self.decoder(z_mean)
             
-            all_prediction+=[prediction.cpu()]
+            all_prediction+=[log_prediction.exp().cpu()]
             all_z_sample+=[z_sample.cpu()]
             all_z_mean+=[z_mean.cpu()]
             
@@ -214,14 +217,14 @@ class SPIB(nn.Module):
         
         if SaveTrajResults:
         
-            label_path = path + '_traj_labels' + str(index) + '.npy'
+            label_path = path + '_traj%d_labels'%(traj_index) + str(index) + '.npy'
             os.makedirs(os.path.dirname(label_path), exist_ok=True)
             
             np.save(label_path, labels.cpu().data.numpy())
             
-            prediction_path = path + '_traj_data_prediction' + str(index) + '.npy'
-            representation_path = path + '_traj_representation' + str(index) + '.npy'
-            mean_representation_path = path + '_traj_mean_representation' + str(index) + '.npy'
+            prediction_path = path + '_traj%d_data_prediction'%(traj_index) + str(index) + '.npy'
+            representation_path = path + '_traj%d_representation'%(traj_index) + str(index) + '.npy'
+            mean_representation_path = path + '_traj%d_mean_representation'%(traj_index) + str(index) + '.npy'
             
             os.makedirs(os.path.dirname(mean_representation_path), exist_ok=True)
             
