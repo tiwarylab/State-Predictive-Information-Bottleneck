@@ -190,7 +190,7 @@ def test_model_advanced():
                                                                     test_past_data, test_future_data, test_data_labels, test_data_weights, batch_size, \
                                                                         output_path, final_result_path, dt, beta, learning_rate, seed)
 
-                                    for i in range(len(traj_data_list))
+                                    for i in range(len(traj_data_list)):
                                         IB.save_traj_results(traj_data_list[i], batch_size, output_path, SaveTrajResults, i, seed)
                                     
                                     IB.save_pseudo_parameters(output_path, seed)
