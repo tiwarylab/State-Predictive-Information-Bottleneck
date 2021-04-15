@@ -113,10 +113,16 @@ def test_model_advanced():
         seed_list = json.loads(config.get("Other Controls","seed"))
 
         # Whether to refine the labels during the training process
-        UpdateLabel = bool(config.get("Other Controls","UpdateLabel"))
+        if config.get("Other Controls","UpdateLabel") == 'True':
+            UpdateLabel = True
+        else:
+            UpdateLabel = False
         
         # Whether save trajectory results
-        SaveTrajResults = bool(config.get("Other Controls","SaveTrajResults"))
+        if config.get("Other Controls","SaveTrajResults") == 'True':
+            SaveTrajResults = True
+        else:
+            SaveTrajResults = False
 
     else:
         print("Pleast input the config file!")
