@@ -137,14 +137,14 @@ def test_model_advanced():
 
         for dt in dt_list:
             data_init_list = [] 
-            if traj_weights == None:
+            if traj_weights_list == None:
                 for i in range(len(traj_data_list)):
-                    data_init_list+=[SPIB_training.data_init(t0, dt, traj_data, traj_labels, None)]
+                    data_init_list+=[SPIB_training.data_init(t0, dt, traj_data_list[i], traj_labels_list[i], None)]
                 train_data_weights = None
                 test_data_weights = None
             else:
                 for i in range(len(traj_data_list)):
-                    data_init_list+=[SPIB_training.data_init(t0, dt, traj_data, traj_labels, None)]
+                    data_init_list+=[SPIB_training.data_init(t0, dt, traj_data_list[i], traj_labels_list[i], traj_weights_list[i])]
 
                 train_data_weights = torch.cat([data_init_list[i][4] for i in range(len(traj_data_list))], dim=0)
                 test_data_weights = torch.cat([data_init_list[i][8] for i in range(len(traj_data_list))], dim=0)
@@ -190,7 +190,7 @@ def test_model_advanced():
                                                                     test_past_data, test_future_data, test_data_labels, test_data_weights, batch_size, \
                                                                         output_path, final_result_path, dt, beta, learning_rate, seed)
 
-                                    for i in range(len(traj_data_list))
+                                    for i in range(len(traj_data_list)):
                                         IB.save_traj_results(traj_data_list[i], batch_size, output_path, SaveTrajResults, i, seed)
                                     
                                     IB.save_pseudo_parameters(output_path, seed)
@@ -198,7 +198,7 @@ def test_model_advanced():
 
 if __name__ == '__main__':
     
-    test_model()
+    test_model_advanced()
     
 
     
