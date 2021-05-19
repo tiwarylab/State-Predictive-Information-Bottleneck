@@ -3,7 +3,7 @@ SPIB: A deep learning-based framework to learn RCs
 from MD trajectories. Code maintained by Dedi.
 
 Read and cite the following when using this method:
-https://arxiv.org/abs/2011.10127
+https://aip.scitation.org/doi/abs/10.1063/5.0038198
 """
 import torch
 from torch import nn
