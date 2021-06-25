@@ -20,8 +20,8 @@ python test_model.py	-dt	# Time delay delta t in terms of # of minimal time reso
 			-n1	# Number of nodes in each hidden layer of the encoder
 			-n2	# Number of nodes in each hidden layer of the decoder
 			-bs # Batch size
-			-threshold	# Threshold in terms of the change of the predicted state population for measuring the convergence of the training
-			-patience	# Number of epochs with the change of the state population smaller than the threshold after which this iteration of the training finishes
+			-threshold	# Threshold in terms of the change of the predicted state population for measuring the convergence of training
+			-patience	# Number of epochs with the change of the state population smaller than the threshold after which this iteration of training finishes
 			-min_refinements	# Minimum refinements
 			-lr	# Learning rate of Adam optimizer
 			-b	# Hyperparameter beta

@@ -61,10 +61,10 @@ def test_model_advanced():
         # Training parameters
         batch_size = int(config.get("Training Parameters","batch_size"))
 
-        # Threshold in terms of the change of the predicted state population for measuring the convergence of the training
+        # Threshold in terms of the change of the predicted state population for measuring the convergence of training
         threshold = float(config.get("Training Parameters","threshold"))
 
-        # Number of epochs with the change of the state population smaller than the threshold after which this iteration of the training finishes
+        # Number of epochs with the change of the state population smaller than the threshold after which this iteration of training finishes
         patience = int(config.get("Training Parameters","patience"))
 
         # Minimum refinements
