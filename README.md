@@ -16,11 +16,12 @@ To train and test model, we proposed two ways:
 python test_model.py	-dt	# Time delay delta t in terms of # of minimal time resolution of the trajectory data
 			-d	# Dimension of RC or bottleneck
 			-K	# Number of pseudo inputs
+			-encoder_type	# Encoder type (Linear or Nonlinear)
 			-n1	# Number of nodes in each hidden layer of the encoder
 			-n2	# Number of nodes in each hidden layer of the decoder
-			-epochs
-			-m	# Refinement interval in terms of # of training steps
 			-bs # Batch size
+			-threshold	# Threshold in terms of the change of the predicted state population for measuring the convergence of the training
+			-patience	# Number of epochs with the change of the state population smaller than the threshold after which this iteration of the training finishes
 			-min_refinements	# Minimum refinements
 			-lr	# Learning rate of Adam optimizer
 			-b	# Hyperparameter beta
@@ -36,7 +37,7 @@ python test_model.py	-dt	# Time delay delta t in terms of # of minimal time reso
 
 Train and test SPIB on the four-well analytical potential:
 ```
-python test_model.py -dt 50 -d 1 -K 10 -epochs 10 -bs 512 -min_refinements 8 -m 1000 -lr 0.001 -b 0.01 -seed 0 -label examples/Four_Well_beta3_gamma4_init_label10.npy -traj examples/Four_Well_beta3_gamma4_traj_data.npy
+python test_model.py -dt 50 -d 1 -K 10 -encoder_type Nonlinear -bs 512 -threshold 0.01 -patience 2 -min_refinements 8 -lr 0.001 -b 0.01 -seed 0 -label examples/Four_Well_beta3_gamma4_init_label10.npy -traj examples/Four_Well_beta3_gamma4_traj_data.npy
 ```
 
 ### For advanced analyses
@@ -46,7 +47,7 @@ python test_model_advanced.py	-config	# Input the configuration file
 
 Here, a configuration file in INI format is supported, which allows a more flexible control of the training process. A sample configuration file is shown in the ```examples``` subdirectory. Two advanced features are included: 
 * It supports simple grid search to tune the hyper-parameters;
-* It also allows multiple trajectories with different weights as the data; 
+* It also allows multiple trajectories with different weights as the input data; 
 
 #### Example
 

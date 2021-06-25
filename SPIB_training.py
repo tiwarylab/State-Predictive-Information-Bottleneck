@@ -106,7 +106,7 @@ def sample_minibatch(past_data, data_labels, data_weights, indices, device):
 
 def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, train_data_weights, \
           test_past_data, test_future_data, init_test_data_labels, test_data_weights, \
-              optimizer, n_epoch, refinement_interval, batch_size, min_refinements, output_path, log_interval, device, index):
+              optimizer, scheduler, batch_size, threshold, patience, min_refinements, output_path, log_interval, device, index):
     IB.train()
     
     step = 0
@@ -119,11 +119,17 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
     train_data_labels = init_train_data_labels
     test_data_labels = init_test_data_labels
 
-    updata_times = 0
+    update_times = 0
+    unchanged_epochs = 0
     epoch = 0
 
-    # Stop only if epoch >= n_epoch and updata_times >= min_refinements
-    while epoch < n_epoch or updata_times < min_refinements:
+    # initial state population
+    state_population0 = torch.sum(train_data_labels,dim=0).float()/train_data_labels.shape[0]
+
+    # record the default optimizer state
+    initial_opt_state_dict = scheduler.optimizer.state_dict()
+
+    while True:
         
         train_permutation = torch.randperm(len(train_past_data))
         test_permutation = torch.randperm(len(test_past_data))
@@ -190,14 +196,6 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
                        "Loss (test) %f\tKL loss (test): %f\n"
                        "Reconstruction loss (test) %f" % (
                            loss, kl_loss, reconstruction_error), file=open(log_path, 'a'))
-                    
-            # label update
-            if IB.UpdateLabel and step % refinement_interval == 0:
-                train_data_labels = IB.update_labels(train_future_data, batch_size)
-                test_data_labels = IB.update_labels(test_future_data, batch_size)
-
-                updata_times+=1
-                print("Update %d\n"%updata_times)
         
             if step % log_interval == 0:
                 # save model
@@ -209,7 +207,62 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
 
         epoch+=1
         
-                
+        # check convergence
+        new_train_data_labels = IB.update_labels(train_future_data, batch_size)
+
+        # save the state population
+        state_population = torch.sum(new_train_data_labels,dim=0).float()/new_train_data_labels.shape[0]
+
+        print(state_population)
+        print(state_population, file=open(log_path, 'a'))
+
+        # print the state population change
+        state_population_change = torch.sqrt(torch.square(state_population-state_population0).sum())
+        
+        print('State population change=%f'%state_population_change)
+        print('State population change=%f'%state_population_change, file=open(log_path, 'a'))
+
+        # update state_population
+        state_population0 = state_population
+
+        scheduler.step()
+        if scheduler.gamma < 1:
+            print("Update lr to %f"%(optimizer.param_groups[0]['lr']))
+            print("Update lr to %f"%(optimizer.param_groups[0]['lr']), file=open(log_path, 'a'))
+
+        # check whether the change of the state population is smaller than the threshold
+        if state_population_change < threshold:
+            unchanged_epochs += 1
+            
+            if unchanged_epochs > patience:
+
+                # Stop only if update_times >= min_refinements
+                if IB.UpdateLabel and update_times < min_refinements:
+                    
+                    train_data_labels = new_train_data_labels
+                    test_data_labels = IB.update_labels(test_future_data, batch_size)
+    
+                    update_times+=1
+                    print("Update %d\n"%(update_times))
+                    print("Update %d\n"%(update_times), file=open(log_path, 'a'))
+                    
+                    # reset epoch and unchanged_epochs
+                    epoch = 0
+                    unchanged_epochs = 0
+    
+                    # reset the optimizer and scheduler
+                    scheduler.optimizer.load_state_dict(initial_opt_state_dict)
+                    scheduler.last_epoch = -1
+                    
+                else:
+                    break
+
+        else:
+            unchanged_epochs = 0
+
+        print("Epoch: %d\n"%(epoch))
+        print("Epoch: %d\n"%(epoch), file=open(log_path, 'a'))
+
     # output the saving path
     total_training_time = time.time() - start
     print("Total training time: %f" % total_training_time)
