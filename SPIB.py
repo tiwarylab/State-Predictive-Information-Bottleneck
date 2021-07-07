@@ -17,11 +17,15 @@ import torch.nn.functional as F
 
 class SPIB(nn.Module):
 
-    def __init__(self, z_dim, pseudo_dim, output_dim, data_shape, device, UpdateLabel= False, neuron_num1=128, 
+    def __init__(self, encoder_type, z_dim, pseudo_dim, output_dim, data_shape, device, UpdateLabel= False, neuron_num1=128, 
                  neuron_num2=128):
         
         super(SPIB, self).__init__()
-        
+        if encoder_type == 'Nonlinear':
+            self.encoder_type = 'Nonlinear'
+        else:
+            self.encoder_type = 'Linear'
+
         self.z_dim = z_dim
         self.pseudo_dim = pseudo_dim
         self.output_dim = output_dim
@@ -48,9 +52,15 @@ class SPIB(nn.Module):
         self.pseudo_means = nn.Linear(self.pseudo_dim, np.prod(self.data_shape), bias=False)
         
         self.encoder = self._encoder_init()
+
+        if self.encoder_type == 'Nonlinear': 
+            self.encoder_mean = nn.Linear(self.neuron_num1, self.z_dim)
+        else:
+            self.encoder_mean = nn.Linear(np.prod(self.data_shape), self.z_dim)
         
-        self.encoder_mean = nn.Linear(self.neuron_num1, self.z_dim)
-        
+        # Note: encoder_type = 'Linear' only means that z_mean is a linear combination of the input OPs, 
+        # the log_var is always obtained through a nonlinear NN
+
         # enforce log_var in the range of [-10, 0]
         self.encoder_logvar = nn.Sequential(
             nn.Linear(self.neuron_num1, self.z_dim),
@@ -90,7 +100,14 @@ class SPIB(nn.Module):
     def encode(self, inputs):
         enc = self.encoder(inputs)
         
-        z_mean = self.encoder_mean(enc)
+        if self.encoder_type == 'Nonlinear': 
+            z_mean = self.encoder_mean(enc)
+        else:
+            z_mean = self.encoder_mean(inputs)
+
+        # Note: encoder_type = 'Linear' only means that z_mean is a linear combination of the input OPs, 
+        # the log_var is always obtained through a nonlinear NN
+        
         # enforce log_var in the range of [-10, 0]
         z_logvar = -10*self.encoder_logvar(enc)
         
@@ -215,6 +232,17 @@ class SPIB(nn.Module):
         
         np.save(population_path, population.cpu().data.numpy())
         
+        self.save_pseudo_parameters(path, index)
+
+        # if the encoder is linear, output the parameters of the linear encoder
+        if self.encoder_type == 'Linear': 
+            z_mean_encoder_weight_path = path + '_z_mean_encoder_weight' + str(index) + '.npy'
+            z_mean_encoder_bias_path = path + '_z_mean_encoder_bias' + str(index) + '.npy'
+            os.makedirs(os.path.dirname(z_mean_encoder_weight_path), exist_ok=True)
+
+            np.save(z_mean_encoder_weight_path, self.encoder_mean.weight.cpu().data.numpy())
+            np.save(z_mean_encoder_bias_path, self.encoder_mean.bias.cpu().data.numpy())
+            
         if SaveTrajResults:
         
             label_path = path + '_traj%d_labels'%(traj_index) + str(index) + '.npy'
@@ -232,7 +260,7 @@ class SPIB(nn.Module):
             np.save(representation_path, all_z_sample.cpu().data.numpy())
             np.save(mean_representation_path, all_z_mean.cpu().data.numpy())
             
-            self.save_pseudo_parameters(path, index)
+            
 
                 
             

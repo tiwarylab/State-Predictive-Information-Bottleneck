@@ -46,6 +46,12 @@ def test_model_advanced():
         # Number of pseudo inputs
         pseudo_dim_list = json.loads(config.get("Model Parameters","K"))
         
+        # Encoder type ('Linear' or 'Nonlinear')
+        if config.get("Model Parameters","encoder_type")=='Nonlinear':
+            encoder_type = 'Nonlinear'
+        else:
+            encoder_type = 'Linear'
+
         # Number of nodes in each hidden layer of the encoder
         neuron_num1_list = json.loads(config.get("Model Parameters","neuron_num1"))
         # Number of nodes in each hidden layer of the encoder
@@ -53,12 +59,13 @@ def test_model_advanced():
         
         
         # Training parameters
-        training_epochs = int(config.get("Training Parameters","epochs"))
-        
         batch_size = int(config.get("Training Parameters","batch_size"))
 
-        # Refinement interval in terms of # of training steps
-        refinement_interval = int(config.get("Training Parameters","m"))
+        # Threshold in terms of the change of the predicted state population for measuring the convergence of training
+        threshold = float(config.get("Training Parameters","threshold"))
+
+        # Number of epochs with the change of the state population smaller than the threshold after which this iteration of training finishes
+        patience = int(config.get("Training Parameters","patience"))
 
         # Minimum refinements
         min_refinements = int(config.get("Training Parameters","min_refinements"))
@@ -66,6 +73,12 @@ def test_model_advanced():
         # By default, we save the model every 10000 steps
         log_interval = int(config.get("Training Parameters","log_interval"))
         
+        # Period of learning rate decay
+        lr_scheduler_step_size = int(config.get("Training Parameters","lr_scheduler_step_size"))
+
+        # Multiplicative factor of learning rate decay. Default: 1 (No learning rate decay)
+        lr_scheduler_gamma = float(config.get("Training Parameters","lr_scheduler_gamma"))
+
         # learning rate of Adam optimizer
         learning_rate_list = json.loads(config.get("Training Parameters","learning_rate"))
         
@@ -174,7 +187,7 @@ def test_model_advanced():
                                     output_path = IB_path + "_d=%d_K=%d_t=%d_b=%.4f_learn=%f" \
                                         % (RC_dim, pseudo_dim, dt, beta, learning_rate)
 
-                                    IB = SPIB.SPIB(RC_dim, pseudo_dim, output_dim, data_shape, device, \
+                                    IB = SPIB.SPIB(encoder_type, RC_dim, pseudo_dim, output_dim, data_shape, device, \
                                                 UpdateLabel, neuron_num1, neuron_num2)
                                     
                                     IB.to(device)
@@ -183,10 +196,12 @@ def test_model_advanced():
                                     
                                     optimizer = torch.optim.Adam(IB.parameters(), lr=learning_rate)
 
+                                    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_scheduler_step_size, gamma=lr_scheduler_gamma)
+
                                     train_result = SPIB_training.train(IB, beta, train_past_data, train_future_data, \
                                                                     train_data_labels, train_data_weights, test_past_data, test_future_data, \
-                                                                        test_data_labels, test_data_weights, optimizer, \
-                                                                            training_epochs, refinement_interval, batch_size, min_refinements, output_path, \
+                                                                        test_data_labels, test_data_weights, optimizer, scheduler,\
+                                                                            batch_size, threshold, patience, min_refinements, output_path, \
                                                                                 log_interval, device, seed)
                                     
                                     if train_result:
