@@ -15,7 +15,6 @@ To train and test model, we proposed two ways:
 ```
 python test_model.py	-dt	# Time delay delta t in terms of # of minimal time resolution of the trajectory data
 			-d	# Dimension of RC or bottleneck
-			-K	# Number of pseudo inputs
 			-encoder_type	# Encoder type (Linear or Nonlinear)
 			-n1	# Number of nodes in each hidden layer of the encoder
 			-n2	# Number of nodes in each hidden layer of the decoder
@@ -37,7 +36,7 @@ python test_model.py	-dt	# Time delay delta t in terms of # of minimal time reso
 
 Train and test SPIB on the four-well analytical potential:
 ```
-python test_model.py -dt 50 -d 1 -K 10 -encoder_type Nonlinear -bs 512 -threshold 0.01 -patience 2 -min_refinements 8 -lr 0.001 -b 0.01 -seed 0 -label examples/Four_Well_beta3_gamma4_init_label10.npy -traj examples/Four_Well_beta3_gamma4_traj_data.npy
+python test_model.py -dt 50 -d 1 -encoder_type Nonlinear -bs 512 -threshold 0.01 -patience 2 -min_refinements 8 -lr 0.001 -b 0.01 -seed 0 -label examples/Four_Well_beta3_gamma4_init_label10.npy -traj examples/Four_Well_beta3_gamma4_traj_data.npy
 ```
 
 ### For advanced analyses

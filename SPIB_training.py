@@ -236,6 +236,11 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
             
             if unchanged_epochs > patience:
 
+                # check whether only one state is found
+                if np.sum(state_population>0)<2:
+                    print("Only one metastable state is found!")
+                    break
+
                 # Stop only if update_times >= min_refinements
                 if IB.UpdateLabel and update_times < min_refinements:
                     
@@ -249,6 +254,10 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
                     # reset epoch and unchanged_epochs
                     epoch = 0
                     unchanged_epochs = 0
+
+                    # reset the representative-inputs
+                    representative_inputs = IB.estimatate_representative_inputs(train_past_data, train_data_weights, batch_size)
+                    IB.reset_representative(representative_inputs.to(device))
     
                     # reset the optimizer and scheduler
                     scheduler.optimizer.load_state_dict(initial_opt_state_dict)
@@ -274,6 +283,12 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
     torch.save({'optimizer': optimizer.state_dict()},
                IB_path+ '_%d_optim_cpt.pt'%step)
     
+    torch.save({'step': step,
+                'state_dict': IB.state_dict()},
+               IB_path+ '_final_cpt.pt')
+    torch.save({'optimizer': optimizer.state_dict()},
+               IB_path+ '_final_optim_cpt.pt')
+
     return False
 
 @torch.no_grad()
