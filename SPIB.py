@@ -312,7 +312,7 @@ class SPIB(nn.Module):
         # save the fractional population of different states
         population = torch.sum(labels,dim=0).float()/len(inputs)
         
-        population_path = path + '_state_population' + str(index) + '.npy'
+        population_path = path + '_traj%d_state_population'%(traj_index) + str(index) + '.npy'
         os.makedirs(os.path.dirname(population_path), exist_ok=True)
         
         np.save(population_path, population.cpu().data.numpy())
