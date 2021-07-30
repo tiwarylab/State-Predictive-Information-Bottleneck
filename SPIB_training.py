@@ -237,7 +237,7 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
             if unchanged_epochs > patience:
 
                 # check whether only one state is found
-                if np.sum(state_population>0)<2:
+                if torch.sum(state_population>0)<2:
                     print("Only one metastable state is found!")
                     break
 
