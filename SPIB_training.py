@@ -106,7 +106,7 @@ def sample_minibatch(past_data, data_labels, data_weights, indices, device):
 
 def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, train_data_weights, \
           test_past_data, test_future_data, init_test_data_labels, test_data_weights, \
-              optimizer, scheduler, batch_size, threshold, patience, min_refinements, output_path, log_interval, device, index):
+              optimizer, scheduler, batch_size, threshold, patience, refinements, output_path, log_interval, device, index):
     IB.train()
     
     step = 0
@@ -241,8 +241,8 @@ def train(IB, beta, train_past_data, train_future_data, init_train_data_labels, 
                     print("Only one metastable state is found!")
                     break
 
-                # Stop only if update_times >= min_refinements
-                if IB.UpdateLabel and update_times < min_refinements:
+                # Stop only if update_times >= refinements
+                if IB.UpdateLabel and update_times < refinements:
                     
                     train_data_labels = new_train_data_labels
                     test_data_labels = IB.update_labels(test_future_data, batch_size)

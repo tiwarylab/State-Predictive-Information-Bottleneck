@@ -77,10 +77,10 @@ def test_model():
         patience = 0
 
     # Minimum refinements
-    if '-min_refinements' in sys.argv:
-        min_refinements = int(sys.argv[sys.argv.index('-min_refinements') + 1])
+    if '-refinements' in sys.argv:
+        refinements = int(sys.argv[sys.argv.index('-refinements') + 1])
     else:
-        min_refinements = 0
+        refinements = 0
         
     # By default, we save the model every 10000 steps
     log_interval = 10000 
@@ -187,7 +187,7 @@ def test_model():
     train_result = SPIB_training.train(IB, beta, train_past_data, train_future_data, \
                                        train_data_labels, train_data_weights, test_past_data, test_future_data, \
                                            test_data_labels, test_data_weights, optimizer, scheduler,\
-                                               batch_size, threshold, patience, min_refinements, output_path, \
+                                               batch_size, threshold, patience, refinements, output_path, \
                                                    log_interval, device, seed)
     
     if train_result:

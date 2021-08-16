@@ -65,7 +65,7 @@ def test_model_advanced():
         patience = int(config.get("Training Parameters","patience"))
 
         # Minimum refinements
-        min_refinements = int(config.get("Training Parameters","min_refinements"))
+        refinements = int(config.get("Training Parameters","refinements"))
             
         # By default, we save the model every 10000 steps
         log_interval = int(config.get("Training Parameters","log_interval"))
@@ -200,7 +200,7 @@ def test_model_advanced():
                                 train_result = SPIB_training.train(IB, beta, train_past_data, train_future_data, \
                                                                 train_data_labels, train_data_weights, test_past_data, test_future_data, \
                                                                     test_data_labels, test_data_weights, optimizer, scheduler,\
-                                                                        batch_size, threshold, patience, min_refinements, output_path, \
+                                                                        batch_size, threshold, patience, refinements, output_path, \
                                                                             log_interval, device, seed)
                                 
                                 if train_result:
