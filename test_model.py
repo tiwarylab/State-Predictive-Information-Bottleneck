@@ -38,12 +38,6 @@ def test_model():
         RC_dim = int(sys.argv[sys.argv.index('-d') + 1])
     else:
         RC_dim = 2
-
-    # Number of pseudo inputs
-    if '-K' in sys.argv:
-        pseudo_dim = int(sys.argv[sys.argv.index('-K') + 1])
-    else:
-        pseudo_dim = 10
     
     # Encoder type ('Linear' or 'Nonlinear')
     if '-encoder_type' in sys.argv and (sys.argv[sys.argv.index('-encoder_type') + 1])=='Nonlinear':
@@ -83,10 +77,10 @@ def test_model():
         patience = 0
 
     # Minimum refinements
-    if '-min_refinements' in sys.argv:
-        min_refinements = int(sys.argv[sys.argv.index('-min_refinements') + 1])
+    if '-refinements' in sys.argv:
+        refinements = int(sys.argv[sys.argv.index('-refinements') + 1])
     else:
-        min_refinements = 0
+        refinements = 0
         
     # By default, we save the model every 10000 steps
     log_interval = 10000 
@@ -173,14 +167,17 @@ def test_model():
         test_past_data, test_future_data, test_data_labels, test_data_weights = \
             SPIB_training.data_init(t0, dt, traj_data, traj_labels, traj_weights)
     
-    output_path = IB_path + "_d=%d_K=%d_t=%d_b=%.4f_learn=%f" \
-        % (RC_dim, pseudo_dim, dt, beta, learning_rate)
+    output_path = IB_path + "_d=%d_t=%d_b=%.4f_learn=%f" \
+        % (RC_dim, dt, beta, learning_rate)
 
-    IB = SPIB.SPIB(encoder_type, RC_dim, pseudo_dim, output_dim, data_shape, device, \
+    IB = SPIB.SPIB(encoder_type, RC_dim, output_dim, data_shape, device, \
                    UpdateLabel, neuron_num1, neuron_num2)
     
     IB.to(device)
     
+    # use the training set to initialize the pseudo-inputs
+    IB.init_representative_inputs(train_past_data, train_data_labels)
+
     train_result = False
     
     optimizer = torch.optim.Adam(IB.parameters(), lr=learning_rate)
@@ -190,7 +187,7 @@ def test_model():
     train_result = SPIB_training.train(IB, beta, train_past_data, train_future_data, \
                                        train_data_labels, train_data_weights, test_past_data, test_future_data, \
                                            test_data_labels, test_data_weights, optimizer, scheduler,\
-                                               batch_size, threshold, patience, min_refinements, output_path, \
+                                               batch_size, threshold, patience, refinements, output_path, \
                                                    log_interval, device, seed)
     
     if train_result:
@@ -202,7 +199,7 @@ def test_model():
 
     IB.save_traj_results(traj_data, batch_size, output_path, SaveTrajResults, 0, seed)
     
-    IB.save_pseudo_parameters(output_path, seed)
+    IB.save_representative_parameters(output_path, seed)
 
 
 if __name__ == '__main__':

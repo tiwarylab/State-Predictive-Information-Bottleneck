@@ -42,9 +42,6 @@ def test_model_advanced():
         
         # Dimension of RC or bottleneck
         RC_dim_list = json.loads(config.get("Model Parameters","d"))
-
-        # Number of pseudo inputs
-        pseudo_dim_list = json.loads(config.get("Model Parameters","K"))
         
         # Encoder type ('Linear' or 'Nonlinear')
         if config.get("Model Parameters","encoder_type")=='Nonlinear':
@@ -68,7 +65,7 @@ def test_model_advanced():
         patience = int(config.get("Training Parameters","patience"))
 
         # Minimum refinements
-        min_refinements = int(config.get("Training Parameters","min_refinements"))
+        refinements = int(config.get("Training Parameters","refinements"))
             
         # By default, we save the model every 10000 steps
         log_interval = int(config.get("Training Parameters","log_interval"))
@@ -178,43 +175,45 @@ def test_model_advanced():
             test_data_labels = torch.cat([data_init_list[i][7] for i in range(len(traj_data_list))], dim=0)
 
             for RC_dim in RC_dim_list:
-                for pseudo_dim in pseudo_dim_list:
-                    for neuron_num1 in neuron_num1_list:
-                        for neuron_num2 in neuron_num2_list:
-                            for beta in beta_list:
-                                for learning_rate in learning_rate_list:
+                for neuron_num1 in neuron_num1_list:
+                    for neuron_num2 in neuron_num2_list:
+                        for beta in beta_list:
+                            for learning_rate in learning_rate_list:
 
-                                    output_path = IB_path + "_d=%d_K=%d_t=%d_b=%.4f_learn=%f" \
-                                        % (RC_dim, pseudo_dim, dt, beta, learning_rate)
+                                output_path = IB_path + "_d=%d_t=%d_b=%.4f_learn=%f" \
+                                    % (RC_dim, dt, beta, learning_rate)
 
-                                    IB = SPIB.SPIB(encoder_type, RC_dim, pseudo_dim, output_dim, data_shape, device, \
-                                                UpdateLabel, neuron_num1, neuron_num2)
-                                    
-                                    IB.to(device)
-                                    
-                                    train_result = False
-                                    
-                                    optimizer = torch.optim.Adam(IB.parameters(), lr=learning_rate)
+                                IB = SPIB.SPIB(encoder_type, RC_dim, output_dim, data_shape, device, \
+                                            UpdateLabel, neuron_num1, neuron_num2)
+                                
+                                IB.to(device)
+                                
+                                # use the training set to initialize the pseudo-inputs
+                                IB.init_representative_inputs(train_past_data, train_data_labels)
 
-                                    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_scheduler_step_size, gamma=lr_scheduler_gamma)
+                                train_result = False
+                                
+                                optimizer = torch.optim.Adam(IB.parameters(), lr=learning_rate)
 
-                                    train_result = SPIB_training.train(IB, beta, train_past_data, train_future_data, \
-                                                                    train_data_labels, train_data_weights, test_past_data, test_future_data, \
-                                                                        test_data_labels, test_data_weights, optimizer, scheduler,\
-                                                                            batch_size, threshold, patience, min_refinements, output_path, \
-                                                                                log_interval, device, seed)
-                                    
-                                    if train_result:
-                                        return
-                                    
-                                    SPIB_training.output_final_result(IB, device, train_past_data, train_future_data, train_data_labels, train_data_weights, \
-                                                                    test_past_data, test_future_data, test_data_labels, test_data_weights, batch_size, \
-                                                                        output_path, final_result_path, dt, beta, learning_rate, seed)
+                                scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_scheduler_step_size, gamma=lr_scheduler_gamma)
 
-                                    for i in range(len(traj_data_list)):
-                                        IB.save_traj_results(traj_data_list[i], batch_size, output_path, SaveTrajResults, i, seed)
-                                    
-                                    IB.save_pseudo_parameters(output_path, seed)
+                                train_result = SPIB_training.train(IB, beta, train_past_data, train_future_data, \
+                                                                train_data_labels, train_data_weights, test_past_data, test_future_data, \
+                                                                    test_data_labels, test_data_weights, optimizer, scheduler,\
+                                                                        batch_size, threshold, patience, refinements, output_path, \
+                                                                            log_interval, device, seed)
+                                
+                                if train_result:
+                                    return
+                                
+                                SPIB_training.output_final_result(IB, device, train_past_data, train_future_data, train_data_labels, train_data_weights, \
+                                                                test_past_data, test_future_data, test_data_labels, test_data_weights, batch_size, \
+                                                                    output_path, final_result_path, dt, beta, learning_rate, seed)
+
+                                for i in range(len(traj_data_list)):
+                                    IB.save_traj_results(traj_data_list[i], batch_size, output_path, SaveTrajResults, i, seed)
+                                
+                                IB.save_representative_parameters(output_path, seed)
 
 
 if __name__ == '__main__':
