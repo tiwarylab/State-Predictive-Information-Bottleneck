@@ -179,14 +179,10 @@ def test_model():
     IB.init_representative_inputs(train_past_data, train_data_labels)
 
     train_result = False
-    
-    optimizer = torch.optim.Adam(IB.parameters(), lr=learning_rate)
-
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_scheduler_step_size, gamma=lr_scheduler_gamma)
 
     train_result = SPIB_training.train(IB, beta, train_past_data, train_future_data, \
                                        train_data_labels, train_data_weights, test_past_data, test_future_data, \
-                                           test_data_labels, test_data_weights, optimizer, scheduler,\
+                                           test_data_labels, test_data_weights, learning_rate, lr_scheduler_step_size, lr_scheduler_gamma,\
                                                batch_size, threshold, patience, refinements, output_path, \
                                                    log_interval, device, seed)
     
