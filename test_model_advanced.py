@@ -11,6 +11,7 @@ import os
 import sys
 import configparser
 import json
+import random
 
 import SPIB
 import SPIB_training
@@ -150,6 +151,7 @@ def test_model_advanced():
     for seed in seed_list:
         np.random.seed(seed)
         torch.manual_seed(seed)
+        random.seed(seed)
 
         for dt in dt_list:
             data_init_list = [] 

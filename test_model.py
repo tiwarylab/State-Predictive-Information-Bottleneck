@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import os
 import sys
+import random
 
 import SPIB
 import SPIB_training
@@ -136,7 +137,8 @@ def test_model():
     if '-seed' in sys.argv:
         seed = int(sys.argv[sys.argv.index('-seed') + 1])
         np.random.seed(seed)
-        torch.manual_seed(seed)    
+        torch.manual_seed(seed)
+        random.seed(seed)    
     else:
         seed = 0
     
