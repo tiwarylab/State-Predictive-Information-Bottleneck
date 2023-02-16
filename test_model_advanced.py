@@ -91,14 +91,14 @@ def test_model_advanced():
         traj_data_path = traj_data_path.split(',')
 
         # Load the data
-        traj_data_list = [torch.from_numpy(np.load(file_path)).float().to(default_device) for file_path in traj_data_path]
+        traj_data_list = [torch.from_numpy(np.load(file_path)).float().to(device) for file_path in traj_data_path]
         
         # Path to the initial state labels
         initial_labels_path = config.get("Data","initial_labels")
         initial_labels_path = initial_labels_path.replace('[','').replace(']','')
         initial_labels_path = initial_labels_path.split(',')
         
-        traj_labels_list = [torch.from_numpy(np.load(file_path)).float().to(default_device) for file_path in initial_labels_path]
+        traj_labels_list = [torch.from_numpy(np.load(file_path)).float().to(device) for file_path in initial_labels_path]
         
         output_dim = traj_labels_list[0].shape[1]
         
@@ -113,7 +113,7 @@ def test_model_advanced():
             traj_weights_path = traj_weights_path.replace('[','').replace(']','')
             traj_weights_path = traj_weights_path.split(',')
         
-            traj_weights_list = [torch.from_numpy(np.load(file_path)).float().to(default_device) for file_path in traj_weights_path]
+            traj_weights_list = [torch.from_numpy(np.load(file_path)).float().to(device) for file_path in traj_weights_path]
             IB_path = os.path.join(base_path, "Weighted")
             assert len(traj_weights_list)==len(traj_labels_list)
 

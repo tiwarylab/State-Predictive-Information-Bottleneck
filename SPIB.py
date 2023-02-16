@@ -182,7 +182,7 @@ class SPIB(nn.Module):
         
     @torch.no_grad()
     def init_representative_inputs(self, inputs, labels):
-        state_population = labels.sum(dim=0)
+        state_population = labels.sum(dim=0).cpu()
         
         # randomly pick up one sample from each initlal state as the initial guess of representative-inputs
         representative_inputs=[]
@@ -211,9 +211,9 @@ class SPIB(nn.Module):
             log_prediction = self.decoder(z_mean)
             
             # label = p/Z
-            prediction += [log_prediction.exp().cpu()]
+            prediction += [log_prediction.exp()]
             
-            mean_rep += [z_mean.cpu()]
+            mean_rep += [z_mean]
         
         prediction = torch.cat(prediction, dim=0)
         mean_rep = torch.cat(mean_rep, dim=0)
@@ -257,7 +257,7 @@ class SPIB(nn.Module):
                 log_prediction = self.decoder(z_mean)
                 
                 # label = p/Z
-                labels += [log_prediction.exp().cpu()]
+                labels += [log_prediction.exp()]
             
             labels = torch.cat(labels, dim=0)
             max_pos = labels.argmax(1)

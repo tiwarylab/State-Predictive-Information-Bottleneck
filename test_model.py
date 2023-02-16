@@ -111,7 +111,7 @@ def test_model():
         print("Pleast input the initial state labels!")
         return
     
-    traj_labels = torch.from_numpy(initial_label).float().to(default_device)
+    traj_labels = torch.from_numpy(initial_label).float().to(device)
     output_dim = initial_label.shape[1]
     
     # Path to the trajectory data
@@ -121,13 +121,13 @@ def test_model():
         print("Pleast input the trajectory data!")
         return
     
-    traj_data = torch.from_numpy(traj_data).float().to(default_device)
+    traj_data = torch.from_numpy(traj_data).float().to(device)
     
     
     # Path to the weights of the samples
     if '-w' in sys.argv:
         traj_weights = np.load(sys.argv[sys.argv.index('-bias') + 1])
-        traj_weights = torch.from_numpy(traj_weights).float().to(default_device)
+        traj_weights = torch.from_numpy(traj_weights).float().to(device)
         IB_path = os.path.join(base_path, "Weighted")
     else:
         traj_weights = None
